@@ -1,0 +1,255 @@
+name: Release
+
+# Two entry points, both ending in the same pipeline (verify → npm → GitHub Release):
+#
+#   • push a `v*` tag    → publish exactly that tag (cut the tag by hand)
+#   • workflow_dispatch  → bump package.json, commit, tag, push, then publish (the normal path)
+#
+# See RELEASING.md.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump to apply before publishing ("none" publishes the current version)
+        type: choice
+        options: ['patch', 'minor', 'major', 'none']
+        default: 'patch'
+      dry_run:
+        description: Verify and pack only — skip the npm publish and the GitHub release
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Two releases must never race for the same version on the registry.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # the bump step commits the version and pushes the tag
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Bump, commit and tag
+        if: github.event_name == 'workflow_dispatch' && inputs.bump != 'none'
+        env:
+          BUMP: ${{ inputs.bump }}
+          BRANCH: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          if [ "$BRANCH" != "$DEFAULT_BRANCH" ]; then
+            echo "::error::Releases must be started from '$DEFAULT_BRANCH' (got '$BRANCH')."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm version "$BUMP" --message "chore(release): v%s"
+          git push origin "HEAD:$BRANCH" --follow-tags
+
+      - name: Resolve the tag and version
+        id: resolve
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            # The bump step just pushed it; with bump=none the tag has to exist already.
+            tag="v${version}"
+            if ! git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+              echo "::error::Tag ${tag} is not on origin. Run with bump=patch/minor/major, or push the tag first."
+              exit 1
+            fi
+          else
+            tag="$GITHUB_REF_NAME"
+            if [ "v${version}" != "$tag" ]; then
+              echo "::error::Tag ${tag} does not match the package.json version ${version}."
+              exit 1
+            fi
+          fi
+          echo "Resolved ${tag} (package version ${version})"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  verify:
+    name: Verify
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Verify the released commit itself, not the branch tip the run started from.
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Verify
+        uses: ./.github/actions/verify
+
+  publish:
+    name: Publish to npm
+    needs: [version, verify]
+    # A pushed tag always publishes; a dispatch publishes unless it asked for a dry run.
+    # (`inputs.x` is only meaningful for workflow_dispatch, hence the short circuit.)
+    if: ${{ github.event_name == 'push' || !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # npm provenance + trusted publishing
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # `registry-url` also writes the .npmrc that points npm at registry.npmjs.org; with
+      # NODE_AUTH_TOKEN unset the CLI authenticates through OIDC (trusted publishing) instead.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # dist/ is git-ignored, so it is rebuilt here. The publish below uses --ignore-scripts to
+      # skip prepublishOnly (a full `verify`): the `verify` job already gated this commit.
+      - name: Build
+        run: bun run build
+
+      - name: Check the version being published
+        env:
+          EXPECTED: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          actual="$(node -p "require('./package.json').version")"
+          if [ "$actual" != "$EXPECTED" ]; then
+            echo "::error::package.json says ${actual} but the release is ${EXPECTED}."
+            exit 1
+          fi
+          echo "Publishing virtuo-scroll-area@${actual}"
+
+      - name: Resolve the npm dist-tag
+        id: dist-tag
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          case "$version" in
+            *-*) tag="${version#*-}"; tag="${tag%%.*}" ;;
+            *) tag="latest" ;;
+          esac
+          echo "dist-tag: ${tag}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve the auth mode
+        id: auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "${NPM_TOKEN}" ]; then
+            echo "mode=token" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=oidc" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish (trusted publishing)
+        if: steps.auth.outputs.mode == 'oidc'
+        env:
+          DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
+        run: npm publish --access public --provenance --ignore-scripts --tag "$DIST_TAG"
+
+      - name: Publish (NPM_TOKEN)
+        if: steps.auth.outputs.mode == 'token'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
+        run: npm publish --access public --provenance --ignore-scripts --tag "$DIST_TAG"
+
+      - name: Job summary
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
+          MODE: ${{ steps.auth.outputs.mode }}
+        run: |
+          {
+            echo "### virtuo-scroll-area@${VERSION} published"
+            echo
+            echo "- dist-tag: \`${DIST_TAG}\`"
+            echo "- auth: \`${MODE}\`"
+            echo "- https://www.npmjs.com/package/virtuo-scroll-area/v/${VERSION}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  github-release:
+    name: GitHub Release
+    needs: [version, publish]
+    if: ${{ github.event_name == 'push' || !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Build the release notes from CHANGELOG.md
+        id: notes
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if node scripts/changelog-section.mjs "$VERSION" > "$RUNNER_TEMP/notes.md"; then
+            echo "mode=changelog" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=generated" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+          NOTES_MODE: ${{ steps.notes.outputs.mode }}
+        run: |
+          set -euo pipefail
+          args=(--verify-tag --title "$TAG")
+          case "$VERSION" in *-*) args+=(--prerelease) ;; esac
+          if [ "$NOTES_MODE" = changelog ]; then
+            args+=(--notes-file "$RUNNER_TEMP/notes.md")
+          else
+            echo "::warning::CHANGELOG.md has no section for ${VERSION}; using generated notes."
+            args+=(--generate-notes)
+          fi
+          gh release create "$TAG" "${args[@]}"

@@ -1,0 +1,47 @@
+name: Verify package
+description: >-
+  Install dependencies, then check formatting, typecheck, run the test suite, build and inspect
+  the packed tarball. Shared by the CI and Release workflows so both gate on exactly the same
+  steps; the caller owns the checkout (and therefore the commit being verified).
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
+    # `--frozen-lockfile` keeps CI honest: a lockfile that disagrees with package.json fails
+    # here instead of silently resolving different versions.
+    - name: Install dependencies
+      shell: bash
+      run: bun install --frozen-lockfile
+
+    - name: Check formatting
+      shell: bash
+      run: bun run format:check
+
+    - name: Typecheck
+      shell: bash
+      run: bun run typecheck
+
+    - name: Test
+      shell: bash
+      run: bun run test
+
+    - name: Build
+      shell: bash
+      run: bun run build
+
+    # Packs the tarball, installs it into a throwaway consumer and imports every entry point
+    # (ESM + CJS) through the `exports` map — the only check that exercises what npm would
+    # actually receive.
+    - name: Verify the packed tarball
+      shell: bash
+      run: bun run verify:pack

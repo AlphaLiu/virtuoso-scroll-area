@@ -41,12 +41,23 @@ console.log('• packing…');
 rmSync(sandbox, { recursive: true, force: true });
 mkdirSync(sandbox, { recursive: true });
 
+/**
+ * This script also runs from `prepublishOnly`, i.e. as a child of another npm process, which
+ * exports its whole configuration as `npm_*` variables. Inheriting them breaks the nested npm
+ * commands below — `npm_config_dry_run` in particular makes `npm install <tarball>` fetch no
+ * data and then fail with ENOENT — so the children get a clean npm environment.
+ */
+const npmEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([key]) => !/^npm_/i.test(key)),
+);
+
 const packOutput = execFileSync(
   'npm',
   ['pack', '--json', '--pack-destination', sandbox],
   {
     cwd: root,
     encoding: 'utf8',
+    env: npmEnv,
   },
 );
 const [{ filename, files }] = JSON.parse(packOutput);
@@ -91,6 +102,7 @@ mkdirSync(join(sandbox, 'node_modules'), { recursive: true });
 execFileSync('npm', ['install', '--no-save', '--no-audit', '--no-fund', tarball], {
   cwd: sandbox,
   stdio: 'pipe',
+  env: npmEnv,
 });
 
 // Peer dependencies are provided by the consumer; reuse the ones already installed here.

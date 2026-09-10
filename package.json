@@ -16,6 +16,14 @@
   ],
   "license": "MIT",
   "author": "Alpha Liu <alpha.liu@me.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlphaLiu/virtuoso-scroll-area.git"
+  },
+  "homepage": "https://github.com/AlphaLiu/virtuoso-scroll-area#readme",
+  "bugs": {
+    "url": "https://github.com/AlphaLiu/virtuoso-scroll-area/issues"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -59,8 +67,11 @@
     "demo": "bun run build && cd examples/vite-demo && bun install && bun run dev",
     "demo:build": "bun run build && cd examples/vite-demo && bun install && bun run build",
     "demo:standalone": "bun run build && cd examples/vite-demo && bun install && cd ../.. && node scripts/build-standalone-demo.mjs",
+    "verify:pack": "node scripts/verify-package.mjs",
+    "changelog:section": "node scripts/changelog-section.mjs",
     "prepublishOnly": "bun run verify",
-    "verify:pack": "node scripts/verify-package.mjs"
+    "publish:dry": "npm publish --dry-run --registry=https://registry.npmjs.org/",
+    "publish:npm": "npm publish --registry=https://registry.npmjs.org/"
   },
   "peerDependencies": {
     "react": ">=18",
