@@ -12,6 +12,7 @@ import { VirtuosoScrollArea } from 'virtuo-scroll-area/virtuoso';
 import { VirtuosoGridScrollArea } from 'virtuo-scroll-area/virtuoso-grid';
 
 import { createBooks, createRows } from './data';
+import { ShadowDomDemo } from './shadow-dom-demo';
 
 export default function App() {
   return (
@@ -229,6 +230,14 @@ function Showcase() {
             label="Back to top"
           />
         </div>
+      </Section>
+
+      <Section
+        step={6}
+        title="Shadow DOM"
+        description="Rendered through a portal into an open shadow root. The library injects its stylesheet into that root and, because the page simulates a document-level scroll lock that cancels every wheel event surfacing at the shadow host, handles the wheel itself. Toggle the lock to compare with wheelScroll='never'."
+      >
+        <ShadowDomDemo />
       </Section>
 
       <footer className="footer">

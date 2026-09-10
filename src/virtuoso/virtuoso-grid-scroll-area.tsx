@@ -14,7 +14,6 @@ import {
   Scroller,
 } from '../scroll-area';
 import { DEFAULT_BUTTON_OFFSET, ScrollToTopButton } from '../scroll-to-top-button';
-import { useInjectedStyles } from '../use-injected-styles';
 import { useVirtualizedScrollArea } from './use-virtualized-scroll-area';
 import type {
   VirtualizedScrollAreaBaseProps,
@@ -172,10 +171,10 @@ export const VirtuosoGridScrollArea = forwardRef<
       scrollHideDelay = DEFAULT_SCROLL_HIDE_DELAY,
       showScrollToTopButton = true,
       scrollContextInstanceId,
+      wheelScroll,
     },
     ref,
   ) => {
-    useInjectedStyles();
     const virtuosoRef = useRef<VirtuosoGridHandle>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -192,6 +191,7 @@ export const VirtuosoGridScrollArea = forwardRef<
       itemCount: totalCount,
       scrollHideDelay,
       scrollContextInstanceId,
+      wheelScroll,
     });
 
     const composedContainerRef = useComposedRef(containerRef, setScrollArea);

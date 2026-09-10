@@ -37,6 +37,7 @@ describe('public API surface', () => {
       'useResizeObserver',
       'useIsomorphicLayoutEffect',
       'useInjectedStyles',
+      'useWheelScroll',
     ] as const) {
       expect(typeof core[hook], hook).toBe('function');
     }
@@ -55,6 +56,7 @@ describe('public API surface', () => {
       'generateScrollStyle',
       'cx',
       'injectStyles',
+      'isInShadowRoot',
     ] as const) {
       expect(typeof core[helper], helper).toBe('function');
     }
@@ -63,6 +65,8 @@ describe('public API surface', () => {
     expect(core.DEFAULT_SCROLL_THRESHOLD).toBe(100);
     expect(core.DEFAULT_BUTTON_OFFSET).toEqual({ x: -12, y: 0 });
     expect(core.STYLE_ELEMENT_ID).toBe('virtuo-scroll-area-styles');
+    expect(core.STYLE_ELEMENT_ATTRIBUTE).toBe('data-vsa-styles');
+    expect(core.WHEEL_LATCH_MS).toBe(150);
     expect(typeof core.styles).toBe('string');
   });
 

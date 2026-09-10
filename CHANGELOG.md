@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Native Shadow DOM support.** Components rendered inside a `ShadowRoot` now inject the
+  stylesheet into that root (once, as `<style data-vsa-styles>`) and handle wheel scrolling
+  themselves, so lists keep scrolling even when the host page or a body-scroll-lock library
+  cancels wheel events at the `document` level. Scroll chaining at the boundary, gesture
+  latching (`WHEEL_LATCH_MS`), pinch-zoom and horizontal wheel pass-through, and `deltaMode`
+  normalisation mirror the browser's own behaviour.
+- `wheelScroll?: 'auto' | 'always' | 'never'` prop on `ScrollArea`, `VirtuosoScrollArea` and
+  `VirtuosoGridScrollArea` (default `'auto'`: manual handling only inside a shadow root).
+- `injectStyles()` accepts a `ShadowRoot`; `useInjectedStyles(element)` injects into the
+  element's shadow root (and its owner document, for iframes/portals).
+- New exports: `useWheelScroll`, `isInShadowRoot`, `WHEEL_LATCH_MS`, `WheelScrollMode`,
+  `STYLE_ELEMENT_ATTRIBUTE`.
+
 ## [0.1.0] — 2026-09-10
 
 First release, extracted from the `scroll-area` component of an in-house Tauri/React app and

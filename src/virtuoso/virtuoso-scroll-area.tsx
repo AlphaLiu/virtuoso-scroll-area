@@ -13,7 +13,6 @@ import {
   Scroller,
 } from '../scroll-area';
 import { DEFAULT_BUTTON_OFFSET, ScrollToTopButton } from '../scroll-to-top-button';
-import { useInjectedStyles } from '../use-injected-styles';
 import { useVirtualizedScrollArea } from './use-virtualized-scroll-area';
 import type {
   VirtualizedScrollAreaBaseProps,
@@ -82,10 +81,10 @@ export const VirtuosoScrollArea = forwardRef<
       scrollHideDelay = DEFAULT_SCROLL_HIDE_DELAY,
       showScrollToTopButton = true,
       scrollContextInstanceId,
+      wheelScroll,
     },
     ref,
   ) => {
-    useInjectedStyles();
     const virtuosoRef = useRef<VirtuosoHandle>(null);
 
     const components = useMemo(
@@ -106,6 +105,7 @@ export const VirtuosoScrollArea = forwardRef<
       itemCount: data.length,
       scrollHideDelay,
       scrollContextInstanceId,
+      wheelScroll,
       // Give virtuoso a moment to re-render before re-measuring after the data changed.
       recountDelay: 50,
     });

@@ -10,7 +10,10 @@ scroll-context API, and optional virtualized list/grid wrappers around
   _optional_ peer that only the virtualized entry points need.
 - **Themeable by design** — every visual is a `--vsa-*` custom property, and the defaults sit in
   the `base` cascade layer so your own CSS (including Tailwind utilities) always wins.
-- **Typed and tested** — ESM + CJS + `.d.ts` for all three entry points, 94 unit tests, and a
+- **Shadow DOM ready** — inside a shadow root (userscripts, extensions, web components) the
+  stylesheet is injected into that root and wheel scrolling keeps working even when the host page
+  locks body scrolling. No wrapper, no extra hook.
+- **Typed and tested** — ESM + CJS + `.d.ts` for all three entry points, 114 unit tests, and a
   demo app that is verified in a real browser.
 
 ```tsx
@@ -42,6 +45,7 @@ That is the whole setup.
   - [VirtuosoGridScrollArea](#virtuosogridscrollarea)
 - [Theming](#theming)
 - [Styling and overriding](#styling-and-overriding)
+- [Shadow DOM](#shadow-dom)
 - [SSR, CSP and Next.js](#ssr-csp-and-nextjs)
 - [Low-level API](#low-level-api)
 - [Examples](#examples)
@@ -124,6 +128,7 @@ while the pointer is inside the area or while the content is scrolling.
 | `scrollbarClassName`      | `string`                         | —       | Class name for the scrollbar rail.                                                 |
 | `scrollbarThumbClassName` | `string`                         | —       | Class name for the thumb.                                                          |
 | `scrollHideDelay`         | `number`                         | `600`   | Delay in ms before the rail fades out.                                             |
+| `wheelScroll`             | `'auto' \| 'always' \| 'never'`  | `auto`  | Manual wheel handling — see [Shadow DOM](#shadow-dom).                             |
 | `className`               | `string`                         | —       | Class name for the outer container. Give it a height — the component does not.     |
 | `children`                | `ReactNode`                      | —       | Scrollable content.                                                                |
 | …rest                     | `HTMLAttributes<HTMLDivElement>` | —       | Forwarded to the outer container (`data-*`, `aria-*`, `style`, …).                 |
@@ -239,6 +244,7 @@ import { VirtuosoGridScrollArea } from 'virtuo-scroll-area/virtuoso-grid';
 | `scrollContextInstanceId`                        | `string`                                | —                  | Registers the area in the scroll context under this id. |
 | `scrollbarClassName` / `scrollbarThumbClassName` | `string`                                | —                  | Forwarded to the overlay scrollbar.                     |
 | `scrollHideDelay`                                | `number`                                | `600`              | Rail fade-out delay in ms.                              |
+| `wheelScroll`                                    | `'auto' \| 'always' \| 'never'`         | `auto`             | Manual wheel handling — see [Shadow DOM](#shadow-dom).  |
 | `className`                                      | `string`                                | —                  | Class name for the outer container (give it a height).  |
 
 Handle (`ref`): `{ scrollToIndex(index, behavior?: 'auto' | 'smooth'), scrollToTop() }`.
@@ -349,6 +355,47 @@ Class names you can target:
 | `.vsa-sr-only`                                                                             | Screen-reader-only text                     |
 | `.vsa-virtualized-area`, `.vsa-virtualized-scroll-area`, `.vsa-scroller`, `.vsa-grid-list` | Virtualized layout                          |
 
+## Shadow DOM
+
+Rendering into a shadow root — userscripts, browser extensions, web components — used to need
+two workarounds. Both are built in now:
+
+- **Styles.** Document-level stylesheets do not cascade into a shadow tree, so every component
+  also injects the stylesheet into the shadow root it is rendered in (once per root, as a
+  `<style data-vsa-styles>` element appended to the root). If you already place the sheet there
+  yourself — `<style data-vsa-styles>{styles}</style>` — the library detects it and does nothing.
+  `injectStyles(shadowRoot)` is exported for manual control.
+- **Wheel scrolling.** Host pages and body-scroll-lock libraries (Radix Dialog's
+  `react-remove-scroll`, `body-scroll-lock`, …) listen for `wheel` on `document` and
+  `preventDefault()` any event they cannot attribute to a scroller they know. Events coming out of
+  a shadow tree are retargeted to the shadow host, so they always look foreign and get cancelled —
+  the list never scrolls. Inside a shadow root the components therefore handle the wheel
+  themselves: a capture-phase, non-passive listener on the viewport consumes the event and writes
+  `scrollTop` once per frame.
+
+The manual wheel handling behaves like the browser's own:
+
+- Scroll chaining is preserved — when the viewport cannot move further in the wheel direction,
+  the event is left alone and the ancestors (or the host page) scroll instead.
+- Gestures are latched — a trackpad flick that started in the viewport keeps scrolling it, even
+  after it reached the boundary, until the events pause for `WHEEL_LATCH_MS` (150 ms). So inertia
+  never spills over to the page underneath.
+- Pinch-zoom (`ctrlKey`) and pure horizontal wheel events are never intercepted.
+- `deltaMode` is normalised (Firefox's line mode counts 16 px per line; page mode uses the
+  viewport height).
+
+Control it with the `wheelScroll` prop, available on `ScrollArea`, `VirtuosoScrollArea` and
+`VirtuosoGridScrollArea`:
+
+| Value              | Behaviour                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| `'auto'` (default) | Manual handling only when the viewport is inside a `ShadowRoot`; native scrolling otherwise. |
+| `'always'`         | Manual handling everywhere — for light-DOM areas that sit under a body-scroll-lock.          |
+| `'never'`          | Leave the wheel to the browser.                                                              |
+
+For custom layouts built from the primitives, `useWheelScroll(viewport, mode)` and
+`isInShadowRoot(node)` are exported from the main entry.
+
 ## SSR, CSP and Next.js
 
 - Every entry point starts with `"use client"`, so the components can be imported from the App
@@ -362,7 +409,8 @@ Class names you can target:
   ```
 
   Injection is idempotent and keyed to `#virtuo-scroll-area-styles`, so importing the file as well
-  is harmless. `injectStyles`, `styles` and `STYLE_ELEMENT_ID` are exported for advanced setups.
+  is harmless. `injectStyles`, `styles`, `STYLE_ELEMENT_ID` and `STYLE_ELEMENT_ATTRIBUTE` are
+  exported for advanced setups.
 
 ## Low-level API
 
@@ -376,7 +424,9 @@ Exported from the main entry for building custom scrolling layouts:
   `addUnlinkedScrollListener`, `THUMB_MIN_SIZE`.
 - DOM/React helpers: `useCallbackRef`, `useDebounceCallback`, `useResizeObserver`,
   `useIsomorphicLayoutEffect`, `useInjectedStyles`, `cx`.
-- Styles: `injectStyles`, `styles`, `STYLE_ELEMENT_ID`, `generateScrollStyle` _(deprecated)_.
+- Shadow DOM / wheel: `useWheelScroll`, `isInShadowRoot`, `WHEEL_LATCH_MS`, `WheelScrollMode`.
+- Styles: `injectStyles`, `styles`, `STYLE_ELEMENT_ID`, `STYLE_ELEMENT_ATTRIBUTE`,
+  `generateScrollStyle` _(deprecated)_.
 
 ## Examples
 
@@ -396,7 +446,7 @@ Tailwind and imports no CSS**, which is the point: only the components are impor
 ```bash
 bun install
 bun run typecheck     # tsc --noEmit
-bun run test          # vitest (94 tests)
+bun run test          # vitest (114 tests)
 bun run coverage      # v8 coverage report
 bun run build         # tsup → dist (ESM + CJS + .d.ts)
 bun run verify:pack   # packs the tarball, installs it, imports it by name

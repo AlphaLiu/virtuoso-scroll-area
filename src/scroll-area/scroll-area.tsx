@@ -5,6 +5,8 @@ import { forwardRef, useEffect, useRef, useState } from 'react';
 import { useComposedRef } from '../lib/compose-refs';
 import { cx } from '../lib/cx';
 import { useResizeObserver } from '../lib/hooks';
+import { useWheelScroll } from '../lib/use-wheel-scroll';
+import type { WheelScrollMode } from '../lib/use-wheel-scroll';
 import { useScrollContext } from '../scroll-context';
 import { useInjectedStyles } from '../use-injected-styles';
 import {
@@ -26,6 +28,12 @@ export interface ScrollAreaProps extends HTMLAttributes<HTMLDivElement> {
   scrollbarThumbClassName?: string;
   /** Delay (ms) before the scrollbar fades out. Defaults to `600`. */
   scrollHideDelay?: number;
+  /**
+   * When the library handles wheel events itself instead of relying on native scrolling.
+   * `'auto'` (default) does so only inside a Shadow DOM tree, where document-level scroll locks
+   * would otherwise cancel the events; `'always'` / `'never'` force it on or off.
+   */
+  wheelScroll?: WheelScrollMode;
 }
 
 /**
@@ -46,15 +54,18 @@ export const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
       scrollbarClassName,
       scrollbarThumbClassName,
       scrollHideDelay = DEFAULT_SCROLL_HIDE_DELAY,
+      wheelScroll = 'auto',
       ...props
     },
     forwardedRef,
   ) => {
-    useInjectedStyles();
     const [scrollArea, setScrollArea] = useState<HTMLDivElement | null>(null);
     const [viewport, setViewport] = useState<HTMLDivElement | null>(null);
     const [content, setContent] = useState<HTMLDivElement | null>(null);
     const resizeCallbackRef = useRef<(() => void) | null>(null);
+
+    useInjectedStyles(scrollArea);
+    useWheelScroll(viewport, wheelScroll);
 
     const composedRef = useComposedRef(forwardedRef, setScrollArea);
     const composedViewportRef = useComposedRef(viewportRef, setViewport);

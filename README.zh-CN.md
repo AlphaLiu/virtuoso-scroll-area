@@ -9,7 +9,9 @@ React 的浮层滚动条组件：悬停显示的滚动条、悬浮「回到顶�
   只有虚拟化入口才会用到。
 - **可主题化** —— 所有视觉都由 `--vsa-*` CSS 变量驱动，且默认样式位于 `base` 级联层，
   你自己的 CSS（包括 Tailwind 工具类）永远能覆盖它。
-- **类型完整、测试完善** —— 三个入口均提供 ESM + CJS + `.d.ts`，94 个单元测试，
+- **原生支持 Shadow DOM** —— 渲染在 shadow root 内（用户脚本、浏览器扩展、Web Components）时，
+  样式表会自动注入该 shadow root，滚轮滚动在宿主页面锁定 body 滚动时也照常工作。无需包装、无需额外 Hook。
+- **类型完整、测试完善** —— 三个入口均提供 ESM + CJS + `.d.ts`，114 个单元测试，
   并有在真实浏览器中验证过的演示应用。
 
 ```tsx
@@ -39,6 +41,7 @@ import { ScrollArea } from 'virtuo-scroll-area';
 - [虚拟化组件](#虚拟化组件)
 - [主题变量](#主题变量)
 - [样式与覆盖](#样式与覆盖)
+- [Shadow DOM](#shadow-dom)
 - [SSR、CSP 与 Next.js](#ssrcsp-与-nextjs)
 - [底层 API](#底层-api)
 - [示例](#示例)
@@ -119,6 +122,7 @@ export function Panel() {
 | `scrollbarClassName`      | `string`                         | —      | 滚动条轨道类名                                              |
 | `scrollbarThumbClassName` | `string`                         | —      | 滑块类名                                                    |
 | `scrollHideDelay`         | `number`                         | `600`  | 淡出延迟（毫秒）                                            |
+| `wheelScroll`             | `'auto' \| 'always' \| 'never'`  | `auto` | 是否手动接管滚轮，见 [Shadow DOM](#shadow-dom)              |
 | `className`               | `string`                         | —      | 外层容器类名（**需要自己给高度**）                          |
 | `children`                | `ReactNode`                      | —      | 滚动内容                                                    |
 | 其余属性                  | `HTMLAttributes<HTMLDivElement>` | —      | 透传到外层容器（`data-*`、`aria-*`、`style` 等）            |
@@ -222,7 +226,7 @@ import { VirtuosoGridScrollArea } from 'virtuo-scroll-area/virtuoso-grid';
 `increaseViewportBy`（默认 `200`）、`showScrollToTopButton`（默认 `true`）、
 `scrollToTopButtonClassName`、`scrollToTopButtonIconClassName`、`buttonOffset`、
 `scrollContextInstanceId`、`scrollbarClassName`、`scrollbarThumbClassName`、`scrollHideDelay`、
-`className`。
+`wheelScroll`（默认 `'auto'`，见 [Shadow DOM](#shadow-dom)）、`className`。
 
 通过 `ref` 暴露：`{ scrollToIndex(index, behavior?: 'auto' | 'smooth'), scrollToTop() }`。
 
@@ -330,6 +334,39 @@ Tailwind 的 `grid-cols-4 gap-3` 或普通 CSS 都可以：
 | `.vsa-sr-only`                                                                             | 仅供屏幕阅读器的文本                     |
 | `.vsa-virtualized-area`、`.vsa-virtualized-scroll-area`、`.vsa-scroller`、`.vsa-grid-list` | 虚拟化布局                               |
 
+## Shadow DOM
+
+把组件渲染进 shadow root（用户脚本、浏览器扩展、Web Components）以前需要两处手写补丁，现在都已内置：
+
+- **样式。** `document` 级别的样式表穿不进 shadow tree，因此每个组件都会把样式表额外注入到自己
+  所在的 shadow root（每个 root 只注入一次，以 `<style data-vsa-styles>` 追加到 root 末尾）。
+  如果你已经自己放了一份——`<style data-vsa-styles>{styles}</style>`——库会检测到并跳过。
+  也可以手动调用导出的 `injectStyles(shadowRoot)`。
+- **滚轮滚动。** 宿主页面以及 body-scroll-lock 类库（Radix Dialog 的 `react-remove-scroll`、
+  `body-scroll-lock` 等）会在 `document` 上监听 `wheel`，并把无法归属到它们认识的滚动容器的事件
+  `preventDefault()` 掉。从 shadow tree 里冒出来的事件会被重定向到 shadow host，看起来永远是「外来」
+  事件，于是统统被取消——列表就滚不动了。因此在 shadow root 内，组件会自己处理滚轮：在 viewport 上以
+  capture、非 passive 方式监听，消费事件并按帧写入 `scrollTop`。
+
+手动接管的行为向浏览器原生对齐：
+
+- 保留滚动链——viewport 在滚轮方向上已经滚不动时，事件原样放行，由祖先（或宿主页面）继续滚动。
+- 手势锁定——从 viewport 内开始的一次触控板滑动会一直作用于该 viewport，即使已经滚到边界，直到事件
+  停顿超过 `WHEEL_LATCH_MS`（150 ms）。惯性滚动不会「冲」到下面的页面。
+- 捏合缩放（`ctrlKey`）和纯横向滚轮事件永远不会被拦截。
+- `deltaMode` 已归一化（Firefox 的行模式按每行 16 px 换算，页模式按 viewport 高度换算）。
+
+通过 `wheelScroll` 属性控制，`ScrollArea`、`VirtuosoScrollArea`、`VirtuosoGridScrollArea` 均支持：
+
+| 取值             | 行为                                                               |
+| ---------------- | ------------------------------------------------------------------ |
+| `'auto'`（默认） | 仅当 viewport 位于 `ShadowRoot` 内时手动接管，其余情况保持原生滚动 |
+| `'always'`       | 始终手动接管——适用于普通 DOM 中被 body-scroll-lock 拦截的场景      |
+| `'never'`        | 完全交给浏览器                                                     |
+
+基于底层原语自定义布局时，可使用主入口导出的 `useWheelScroll(viewport, mode)` 与
+`isInShadowRoot(node)`。
+
 ## SSR、CSP 与 Next.js
 
 - 所有入口都以 `"use client"` 开头，可直接在 App Router 中引入。
@@ -341,7 +378,7 @@ Tailwind 的 `grid-cols-4 gap-3` 或普通 CSS 都可以：
   ```
 
   注入是按 `#virtuo-scroll-area-styles` 幂等处理的，两者同时存在也无副作用。
-  `injectStyles`、`styles`、`STYLE_ELEMENT_ID` 均已导出，便于高级用法。
+  `injectStyles`、`styles`、`STYLE_ELEMENT_ID`、`STYLE_ELEMENT_ATTRIBUTE` 均已导出，便于高级用法。
 
 ## 底层 API
 
@@ -354,7 +391,9 @@ Tailwind 的 `grid-cols-4 gap-3` 或普通 CSS 都可以：
   `addUnlinkedScrollListener`、`THUMB_MIN_SIZE`
 - 工具 Hook：`useCallbackRef`、`useDebounceCallback`、`useResizeObserver`、
   `useIsomorphicLayoutEffect`、`useInjectedStyles`、`cx`
-- 样式：`injectStyles`、`styles`、`STYLE_ELEMENT_ID`、`generateScrollStyle`（已废弃）
+- Shadow DOM / 滚轮：`useWheelScroll`、`isInShadowRoot`、`WHEEL_LATCH_MS`、`WheelScrollMode`
+- 样式：`injectStyles`、`styles`、`STYLE_ELEMENT_ID`、`STYLE_ELEMENT_ATTRIBUTE`、
+  `generateScrollStyle`（已废弃）
 
 ## 示例
 
@@ -373,7 +412,7 @@ bun run demo:standalone  # 生成单文件 HTML，无需服务器即可打开
 ```bash
 bun install
 bun run typecheck     # tsc --noEmit
-bun run test          # vitest（94 个测试）
+bun run test          # vitest（114 个测试）
 bun run coverage      # v8 覆盖率
 bun run build         # tsup → dist（ESM + CJS + .d.ts）
 bun run verify:pack   # 打包 tarball、安装后按包名导入验证

@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { render } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { injectStyles, STYLE_ELEMENT_ID, styles } from '../src/styles';
-import { generateScrollStyle } from '../src/scroll-area';
+import {
+  injectStyles,
+  STYLE_ELEMENT_ATTRIBUTE,
+  STYLE_ELEMENT_ID,
+  styles,
+} from '../src/styles';
+import { generateScrollStyle, ScrollArea, ScrollToTopButton } from '../src/index';
 
 describe('stylesheet', () => {
   it('exposes the raw CSS', () => {
@@ -88,6 +94,73 @@ describe('injectStyles', () => {
     injectStyles(frame);
 
     expect(frame.getElementById(STYLE_ELEMENT_ID)?.textContent).toBe(styles);
+  });
+
+  it('injects into a shadow root once, without reusing the document id', () => {
+    const shadow = document.createElement('div').attachShadow({ mode: 'open' });
+
+    injectStyles(shadow);
+    injectStyles(shadow);
+
+    const sheets = shadow.querySelectorAll(`style[${STYLE_ELEMENT_ATTRIBUTE}]`);
+    expect(sheets).toHaveLength(1);
+    expect(sheets[0]?.textContent).toBe(styles);
+    expect(sheets[0]?.id).toBe('');
+  });
+
+  it('respects a stylesheet the consumer already placed in the shadow root', () => {
+    const shadow = document.createElement('div').attachShadow({ mode: 'open' });
+    const own = document.createElement('style');
+    own.setAttribute(STYLE_ELEMENT_ATTRIBUTE, '');
+    own.textContent = '/* mine */';
+    shadow.appendChild(own);
+
+    injectStyles(shadow);
+    expect(shadow.querySelectorAll('style')).toHaveLength(1);
+  });
+});
+
+describe('automatic injection from components', () => {
+  const hosts: HTMLElement[] = [];
+
+  afterEach(() => {
+    for (const host of hosts.splice(0)) host.remove();
+  });
+
+  function shadowContainer(): HTMLElement {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    hosts.push(host);
+    const container = document.createElement('div');
+    host.attachShadow({ mode: 'open' }).appendChild(container);
+    return container;
+  }
+
+  it('ScrollArea injects the stylesheet into the shadow root it renders in', () => {
+    const container = shadowContainer();
+    render(<ScrollArea>content</ScrollArea>, { container });
+
+    const root = container.getRootNode() as ShadowRoot;
+    expect(root.querySelectorAll(`style[${STYLE_ELEMENT_ATTRIBUTE}]`)).toHaveLength(1);
+    expect(root.querySelector('style')?.textContent).toBe(styles);
+  });
+
+  it('ScrollToTopButton injects it too when used standalone', () => {
+    const container = shadowContainer();
+    render(<ScrollToTopButton scrollToTop={() => {}} scrollerRef={{ current: null }} />, {
+      container,
+    });
+
+    const root = container.getRootNode() as ShadowRoot;
+    expect(root.querySelectorAll(`style[${STYLE_ELEMENT_ATTRIBUTE}]`)).toHaveLength(1);
+  });
+
+  it('does not add a shadow sheet for light-DOM renders', () => {
+    const before = document.querySelectorAll(`style[${STYLE_ELEMENT_ATTRIBUTE}]`).length;
+    render(<ScrollArea>content</ScrollArea>);
+    expect(document.querySelectorAll(`style[${STYLE_ELEMENT_ATTRIBUTE}]`)).toHaveLength(
+      Math.max(before, 1),
+    );
   });
 });
 

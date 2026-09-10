@@ -13,6 +13,7 @@ export {
   getThumbOffsetFromScroll,
   getThumbRatio,
   getThumbSize,
+  isInShadowRoot,
   isScrollingWithinScrollbarBounds,
   linearScale,
   ScrollArea,
@@ -30,6 +31,8 @@ export {
   useResizeObserver,
   useScrollAreaContext,
   useScrollbarContext,
+  useWheelScroll,
+  WHEEL_LATCH_MS,
 } from './scroll-area';
 export type {
   MutableRef,
@@ -40,6 +43,7 @@ export type {
   ScrollAreaThumbProps,
   ScrollbarContextValue,
   Sizes,
+  WheelScrollMode,
 } from './scroll-area';
 
 export {
@@ -65,5 +69,10 @@ export type { ScrollToTopButtonProps } from './scroll-to-top-button';
 export { cx } from './lib/cx';
 export type { ClassValue } from './lib/cx';
 
-export { injectStyles, STYLE_ELEMENT_ID, styles } from './styles';
+export {
+  injectStyles,
+  STYLE_ELEMENT_ATTRIBUTE,
+  STYLE_ELEMENT_ID,
+  styles,
+} from './styles';
 export { useInjectedStyles } from './use-injected-styles';

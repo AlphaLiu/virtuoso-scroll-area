@@ -24,6 +24,9 @@ export {
   useResizeObserver,
 } from '../lib/hooks';
 
+export { isInShadowRoot, useWheelScroll, WHEEL_LATCH_MS } from '../lib/use-wheel-scroll';
+export type { WheelScrollMode } from '../lib/use-wheel-scroll';
+
 export { assignRef, useComposedRef } from '../lib/compose-refs';
 export type { MutableRef } from '../lib/compose-refs';
 

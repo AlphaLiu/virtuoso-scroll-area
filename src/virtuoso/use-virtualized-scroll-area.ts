@@ -2,9 +2,12 @@ import type { ForwardedRef, RefObject } from 'react';
 
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
+import { useWheelScroll } from '../lib/use-wheel-scroll';
+import type { WheelScrollMode } from '../lib/use-wheel-scroll';
 import { useScrollAreaContextValue } from '../scroll-area';
 import type { ScrollAreaContextValue } from '../scroll-area';
 import { useScrollContext } from '../scroll-context';
+import { useInjectedStyles } from '../use-injected-styles';
 
 type ScrollBehaviorOption = 'auto' | 'smooth';
 
@@ -26,6 +29,12 @@ export interface VirtualizedScrollAreaBaseProps {
   showScrollToTopButton?: boolean;
   /** Registers this region in the scroll context under this id. */
   scrollContextInstanceId?: string;
+  /**
+   * When the library handles wheel events itself instead of relying on native scrolling.
+   * `'auto'` (default) does so only inside a Shadow DOM tree, where document-level scroll locks
+   * would otherwise cancel the events; `'always'` / `'never'` force it on or off.
+   */
+  wheelScroll?: WheelScrollMode;
 }
 
 /** Imperative API exposed through the `ref` of both virtualized scroll areas. */
@@ -50,6 +59,8 @@ export interface UseVirtualizedScrollAreaOptions {
   scrollHideDelay: number;
   /** When set, the region is registered in the scroll context under this id. */
   scrollContextInstanceId?: string;
+  /** See {@link VirtualizedScrollAreaBaseProps.wheelScroll}. Defaults to `'auto'`. */
+  wheelScroll?: WheelScrollMode;
   /**
    * Delay (ms) before recomputing the scrollbar after `itemCount` changes (filtering, paging, …).
    * `0` (the default) disables the recompute.
@@ -86,6 +97,7 @@ export function useVirtualizedScrollArea({
   itemCount,
   scrollHideDelay,
   scrollContextInstanceId,
+  wheelScroll = 'auto',
   recountDelay = 0,
 }: UseVirtualizedScrollAreaOptions): VirtualizedScrollAreaState {
   const { setScrollAreaElement, registerInstance, unregisterInstance } =
@@ -129,6 +141,11 @@ export function useVirtualizedScrollArea({
     },
     [setScrollAreaElement],
   );
+
+  // The stylesheet must also reach a surrounding shadow root, and inside a Shadow DOM tree (or
+  // on request) wheel events are handled by hand; see the hooks.
+  useInjectedStyles(scrollArea);
+  useWheelScroll(viewport, wheelScroll);
 
   // Virtuoso keeps changing the scroller's `scrollHeight` as rows come and go, so the geometry
   // has to be re-measured while scrolling (once per frame).

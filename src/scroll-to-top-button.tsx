@@ -105,12 +105,14 @@ export const ScrollToTopButton: FC<ScrollToTopButtonProps> = ({
   label = 'Scroll to top',
   icon,
 }) => {
-  useInjectedStyles();
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  useInjectedStyles(container);
   const visible = useScrolledPastThreshold(scrollerRef, threshold);
   const { x = 0, y = 0 } = buttonOffset;
 
   return (
     <div
+      ref={setContainer}
       data-visible={visible ? 'true' : 'false'}
       className="vsa-scroll-to-top"
       style={{ transform: `translate(${x}px, calc(-50% + ${y}px))` }}
