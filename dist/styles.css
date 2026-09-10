@@ -1,0 +1,318 @@
+/*!
+ * virtuo-scroll-area — stylesheet
+ *
+ * This file is auto-injected on first render by every JavaScript entry point, so you normally
+ * do not import it yourself. If your setup forbids runtime style injection (strict CSP,
+ * SSR-only shells), import it manually instead:
+ *
+ *   import 'virtuo-scroll-area/styles.css';
+ *
+ * Injection is idempotent and keyed to `#virtuo-scroll-area-styles`, so doing both is harmless.
+ *
+ * Cascade
+ * -------
+ * Everything lives in the `base` cascade layer. In a Tailwind app that means:
+ *
+ *   - Tailwind's own layers win over these defaults, so `className="grid-cols-4"` or
+ *     `scrollbarThumbClassName="bg-red-500"` overrides this stylesheet without `!important`
+ *     and without fighting specificity.
+ *   - Rules injected here still beat Tailwind Preflight (tailwindcss/preflight), which lives in
+ *     the same layer but is emitted earlier.
+ *
+ * In a plain-CSS app your unlayered rules always beat this file, so overriding stays trivial.
+ *
+ * Theming
+ * -------
+ * Every visual is driven by a CSS custom property. Override them anywhere above the component:
+ *
+ *   .my-scroll-area {
+ *     --vsa-thumb-background: rgb(0 0 0 / 0.2);
+ *     --vsa-scrollbar-width: 14px;
+ *   }
+ *
+ * Mapping to shadcn/ui tokens looks like this:
+ *
+ *   .vsa-scroll-area {
+ *     --vsa-thumb-background: color-mix(in oklab, var(--muted-foreground) 30%, transparent);
+ *     --vsa-scroll-to-top-background: var(--primary);
+ *     --vsa-scroll-to-top-foreground: var(--primary-foreground);
+ *   }
+ */
+
+@layer base {
+  /* ----------------------------------------------------------------------------------------------
+   * Root / layout
+   * -------------------------------------------------------------------------------------------- */
+
+  .vsa-scroll-area,
+  .vsa-viewport,
+  .vsa-content,
+  .vsa-scrollbar,
+  .vsa-thumb,
+  .vsa-scroll-to-top,
+  .vsa-scroll-to-top-button,
+  .vsa-grid-list {
+    box-sizing: border-box;
+  }
+
+  .vsa-scroll-area {
+    /* Scrollbar rail */
+    --vsa-scrollbar-width: 10px;
+    --vsa-scrollbar-padding: 1px;
+    --vsa-scrollbar-z-index: 50;
+    --vsa-scrollbar-transition-duration: 200ms;
+
+    /* Thumb */
+    --vsa-thumb-background: rgb(115 115 115 / 0.42);
+    --vsa-thumb-background-hover: rgb(115 115 115 / 0.62);
+    --vsa-thumb-radius: 9999px;
+    --vsa-thumb-transition-duration: 150ms;
+
+    /* Scroll-to-top button */
+    --vsa-scroll-to-top-size: 40px;
+    --vsa-scroll-to-top-icon-size: 20px;
+    --vsa-scroll-to-top-background: #2563eb;
+    --vsa-scroll-to-top-background-hover: #1d4ed8;
+    --vsa-scroll-to-top-foreground: #ffffff;
+    --vsa-scroll-to-top-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.25), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+    --vsa-scroll-to-top-z-index: 50;
+
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Layout used by the non-virtualized `ScrollArea`, whose viewport is a flex child. The
+   * virtualized containers only need the variables and the positioning from `.vsa-scroll-area`. */
+  .vsa-scroll-area-layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Automatic dark-mode defaults. The `.dark` selector also covers apps that toggle a class
+   * (the shadcn/ui convention); it wins over the media query because it is more specific. */
+  @media (prefers-color-scheme: dark) {
+    .vsa-scroll-area {
+      --vsa-thumb-background: rgb(237 237 237 / 0.32);
+      --vsa-thumb-background-hover: rgb(237 237 237 / 0.5);
+    }
+  }
+
+  .dark .vsa-scroll-area {
+    --vsa-thumb-background: rgb(237 237 237 / 0.32);
+    --vsa-thumb-background-hover: rgb(237 237 237 / 0.5);
+  }
+
+  /* ----------------------------------------------------------------------------------------------
+   * Viewport — the real scrolling element; the native scrollbar is hidden because we draw our own
+   * -------------------------------------------------------------------------------------------- */
+
+  .vsa-viewport {
+    min-height: 0;
+    flex: 1 1 0%;
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    /* Hide the native scrollbar: Firefox / legacy Edge / WebKit */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .vsa-viewport::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+    background: transparent;
+  }
+
+  .vsa-content {
+    min-width: 0;
+  }
+
+  /* ----------------------------------------------------------------------------------------------
+   * Overlay scrollbar
+   * -------------------------------------------------------------------------------------------- */
+
+  .vsa-scrollbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--vsa-scrollbar-z-index);
+    display: flex;
+    width: var(--vsa-scrollbar-width);
+    padding: var(--vsa-scrollbar-padding);
+    border-left: 1px solid transparent;
+    opacity: 1;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: opacity var(--vsa-scrollbar-transition-duration) ease-out;
+  }
+
+  .vsa-thumb {
+    position: relative;
+    width: 100%;
+    height: var(--vsa-thumb-height, auto);
+    flex: 1 1 0%;
+    border-radius: var(--vsa-thumb-radius);
+    background-color: var(--vsa-thumb-background);
+    opacity: 1;
+    transition:
+      background-color var(--vsa-thumb-transition-duration) ease-out,
+      opacity var(--vsa-thumb-transition-duration) ease-out;
+  }
+
+  .vsa-scrollbar:hover .vsa-thumb,
+  .vsa-thumb:hover {
+    background-color: var(--vsa-thumb-background-hover);
+  }
+
+  .vsa-thumb[data-state='hidden'] {
+    opacity: 0;
+  }
+
+  /* ----------------------------------------------------------------------------------------------
+   * Scroll-to-top button
+   * -------------------------------------------------------------------------------------------- */
+
+  .vsa-scroll-to-top {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    z-index: var(--vsa-scroll-to-top-z-index);
+    /* `transform` is written inline so each instance can offset itself; keep it animated here. */
+    transition:
+      opacity 300ms ease-in-out,
+      scale 300ms ease-in-out,
+      transform 300ms ease-in-out;
+  }
+
+  .vsa-scroll-to-top[data-visible='false'] {
+    opacity: 0;
+    scale: 0.9;
+    pointer-events: none;
+  }
+
+  .vsa-scroll-to-top[data-visible='true'] {
+    opacity: 1;
+    scale: 1;
+  }
+
+  .vsa-scroll-to-top-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--vsa-scroll-to-top-size);
+    height: var(--vsa-scroll-to-top-size);
+    padding: 0;
+    border: 0;
+    border-radius: 9999px;
+    background-color: var(--vsa-scroll-to-top-background);
+    color: var(--vsa-scroll-to-top-foreground);
+    box-shadow: var(--vsa-scroll-to-top-shadow);
+    font: inherit;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    animation: vsa-slow-bounce 2s infinite;
+    transition:
+      background-color 150ms ease-out,
+      opacity 150ms ease-out;
+  }
+
+  .vsa-scroll-to-top-button:hover {
+    background-color: var(--vsa-scroll-to-top-background-hover);
+  }
+
+  .vsa-scroll-to-top-button:focus-visible {
+    outline: 2px solid var(--vsa-scroll-to-top-foreground);
+    outline-offset: 2px;
+  }
+
+  .vsa-scroll-to-top-icon {
+    width: var(--vsa-scroll-to-top-icon-size);
+    height: var(--vsa-scroll-to-top-icon-size);
+    color: currentColor;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vsa-scroll-to-top-button {
+      animation: none;
+    }
+
+    .vsa-scroll-to-top {
+      transition: none;
+    }
+  }
+
+  /* ----------------------------------------------------------------------------------------------
+   * Accessibility helper
+   * -------------------------------------------------------------------------------------------- */
+
+  .vsa-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    white-space: nowrap;
+    border-width: 0;
+    clip-path: inset(50%);
+  }
+
+  /* ----------------------------------------------------------------------------------------------
+   * Virtualized (react-virtuoso) layout
+   * -------------------------------------------------------------------------------------------- */
+
+  .vsa-virtualized-area {
+    height: 100%;
+  }
+
+  .vsa-virtualized-scroll-area {
+    height: 100%;
+    overflow: hidden !important;
+  }
+
+  /* react-virtuoso's scroller keeps `overflow-y: scroll` so it always has a measurable
+   * scrollbar, and we hide the native one because the overlay scrollbar replaces it. */
+  .vsa-scroller[data-virtuoso-scroller] {
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    scrollbar-width: none !important;
+  }
+
+  .vsa-scroller[data-virtuoso-scroller]::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
+    background: transparent !important;
+  }
+
+  /* Default grid: a single column with 16px gaps, matching the layout the component shipped
+   * from. Pass `gridClassName` (for example Tailwind's `grid-cols-4 gap-3`) to override —
+   * utilities win over this layer. */
+  .vsa-grid-list {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+@keyframes vsa-slow-bounce {
+  0% {
+    transform: translateY(-15%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+
+  100% {
+    transform: translateY(-15%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+}
