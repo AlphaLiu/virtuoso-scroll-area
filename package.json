@@ -1,6 +1,6 @@
 {
   "name": "virtuo-scroll-area",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Zero-config, dependency-free scroll area for React: custom overlay scrollbar with hover reveal, scroll-to-top button, scroll context API, and optional react-virtuoso integrations.",
   "keywords": [
     "react",
