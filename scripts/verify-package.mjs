@@ -6,7 +6,11 @@ import { fileURLToPath } from 'node:url';
 
 /**
  * Installs the packed tarball into a throwaway project and imports it the way a real consumer
- * would — through the package `exports` map, in both ESM and CJS.
+ * would — through the package `exports` map over ESM.
+ *
+ * The package ships ESM only, so there is no `require` condition left to check. What replaces
+ * that check is the Node `require(esm)` interop path: Node ≥ 20.19 / ≥ 22.12 can `require()` an
+ * ESM package directly, which is what used to justify the separate CJS build.
  *
  * The unit tests import `src/`, and the demo aliases `dist/`; this is the only check that
  * exercises package.json, the entry paths and the published file list end to end.
@@ -83,7 +87,6 @@ for (const forbidden of [
 }
 for (const required of [
   'dist/index.js',
-  'dist/index.cjs',
   'dist/index.d.ts',
   'dist/virtuoso.js',
   'dist/virtuoso-grid.js',
@@ -91,9 +94,17 @@ for (const required of [
   'README.md',
   'LICENSE',
   'CHANGELOG.md',
+  'MIGRATION.md',
 ]) {
   if (!files.some((file) => file.path === required))
     fail(`missing from tarball: ${required}`);
+}
+
+// Guard the other direction too: an ESM-only package must not ship the CJS half it no longer
+// declares in `exports`, or the tarball silently grows back to twice the size.
+for (const file of files) {
+  if (/\.cjs$|\.d\.cts$/.test(file.path))
+    fail(`CJS artifact in an ESM-only tarball: ${file.path}`);
 }
 
 console.log('• installing into a sandbox consumer…');
@@ -136,21 +147,29 @@ for (const [entry, names] of Object.entries(EXPECTED)) {
   console.log(`  ✓ import '${entry}' → ${names.length} exports checked`);
 }
 
-// The CJS build must work for consumers on require().
-const require = createRequire(join(sandbox, 'index.cjs'));
+// The package is ESM only, so `require()` only works through Node's `require(esm)` interop
+// (Node ≥ 20.19 / ≥ 22.12). Assert both facts: the interop actually resolves the entry, and no
+// `require` condition is advertised — a `require` condition pointing at a CJS file is what made
+// the tarball twice its necessary size.
+if (manifest.exports['.']?.require) {
+  fail("the manifest still advertises a 'require' condition for an ESM-only package");
+} else {
+  console.log("  ✓ no 'require' condition (ESM only)");
+}
+
+const requireEsm = createRequire(join(sandbox, 'index.cjs'));
 try {
-  const cjs = require('virtuo-scroll-area');
-  if (typeof cjs.ScrollArea !== 'object' || typeof cjs.injectStyles !== 'function') {
-    fail('the CJS entry does not expose the expected exports');
+  const viaRequire = requireEsm('virtuo-scroll-area');
+  if (typeof viaRequire.injectStyles !== 'function') {
+    fail('require() interop resolved the entry but it has no expected exports');
   } else {
-    console.log("  ✓ require('virtuo-scroll-area') (CJS)");
+    console.log("  ✓ require('virtuo-scroll-area') via Node require(esm) interop");
   }
-  const cjsVirtuoso = require('virtuo-scroll-area/virtuoso');
-  if (!cjsVirtuoso.VirtuosoScrollArea)
-    fail('the CJS virtuoso entry is missing VirtuosoScrollArea');
-  else console.log("  ✓ require('virtuo-scroll-area/virtuoso') (CJS)");
 } catch (error) {
-  fail(`CJS require failed: ${error.message}`);
+  // Not a failure: the interop needs a recent Node, and this script may run on an older one.
+  console.log(
+    `  • require(esm) interop not exercised on ${process.version} (${error.code ?? ''})`,
+  );
 }
 
 // The published stylesheet must be the real thing, not an empty stub.

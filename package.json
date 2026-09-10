@@ -25,24 +25,21 @@
     "url": "https://github.com/AlphaLiu/virtuoso-scroll-area/issues"
   },
   "type": "module",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "default": "./dist/index.js"
     },
     "./virtuoso": {
       "types": "./dist/virtuoso.d.ts",
-      "import": "./dist/virtuoso.js",
-      "require": "./dist/virtuoso.cjs"
+      "default": "./dist/virtuoso.js"
     },
     "./virtuoso-grid": {
       "types": "./dist/virtuoso-grid.d.ts",
-      "import": "./dist/virtuoso-grid.js",
-      "require": "./dist/virtuoso-grid.cjs"
+      "default": "./dist/virtuoso-grid.js"
     },
     "./styles.css": "./dist/styles.css",
     "./package.json": "./package.json"

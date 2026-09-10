@@ -11,7 +11,7 @@ React 的浮层滚动条组件：悬停显示的滚动条、悬浮「回到顶�
   你自己的 CSS（包括 Tailwind 工具类）永远能覆盖它。
 - **原生支持 Shadow DOM** —— 渲染在 shadow root 内（用户脚本、浏览器扩展、Web Components）时，
   样式表会自动注入该 shadow root，滚轮滚动在宿主页面锁定 body 滚动时也照常工作。无需包装、无需额外 Hook。
-- **类型完整、测试完善** —— 三个入口均提供 ESM + CJS + `.d.ts`，114 个单元测试，
+- **类型完整、测试完善** —— 三个入口均提供 ESM + `.d.ts`，114 个单元测试，
   并有在真实浏览器中验证过的演示应用。
 
 ```tsx
@@ -414,7 +414,7 @@ bun install
 bun run typecheck     # tsc --noEmit
 bun run test          # vitest（114 个测试）
 bun run coverage      # v8 覆盖率
-bun run build         # tsup → dist（ESM + CJS + .d.ts）
+bun run build         # tsup → dist（ESM + .d.ts）
 bun run verify:pack   # 打包 tarball、安装后按包名导入验证
 bun run verify        # typecheck + test + build + verify:pack
 bun run format        # prettier

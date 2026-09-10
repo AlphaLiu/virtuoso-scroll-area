@@ -13,7 +13,7 @@ scroll-context API, and optional virtualized list/grid wrappers around
 - **Shadow DOM ready** — inside a shadow root (userscripts, extensions, web components) the
   stylesheet is injected into that root and wheel scrolling keeps working even when the host page
   locks body scrolling. No wrapper, no extra hook.
-- **Typed and tested** — ESM + CJS + `.d.ts` for all three entry points, 114 unit tests, and a
+- **Typed and tested** — ESM + `.d.ts` for all three entry points, 114 unit tests, and a
   demo app that is verified in a real browser.
 
 ```tsx
@@ -448,7 +448,7 @@ bun install
 bun run typecheck     # tsc --noEmit
 bun run test          # vitest (114 tests)
 bun run coverage      # v8 coverage report
-bun run build         # tsup → dist (ESM + CJS + .d.ts)
+bun run build         # tsup → dist (ESM + .d.ts)
 bun run verify:pack   # packs the tarball, installs it, imports it by name
 bun run verify        # typecheck + test + build + verify:pack
 bun run format        # prettier

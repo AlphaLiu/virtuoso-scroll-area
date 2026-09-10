@@ -40,7 +40,7 @@ runs:
       run: bun run build
 
     # Packs the tarball, installs it into a throwaway consumer and imports every entry point
-    # (ESM + CJS) through the `exports` map — the only check that exercises what npm would
+    # over ESM through the `exports` map — the only check that exercises what npm would
     # actually receive.
     - name: Verify the packed tarball
       shell: bash

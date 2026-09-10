@@ -4,6 +4,26 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **BREAKING: the package is now ESM-only.** A consuming `require()` no longer resolves a
+  dedicated CJS bundle — use `import`/`import()`, or a Node ≥ 20.19 / ≥ 22.12 where `require()`
+  of ESM works through the interop path. The `require` condition was removed from `exports` for
+  all three entry points, along with the `.cjs` and `.d.cts` output. This roughly halves the
+  package: the unpacked tarball drops from 27 files / 664 kB to 15 files / ~140 kB.
+- Sourcemaps are no longer published. Each `.map` embedded the full original source of its
+  inputs, and together they accounted for ~55% of the tarball. Build them on demand with
+  `SOURCEMAP=1 bun run build` when debugging a release.
+- `verify:pack` now asserts the ESM-only contract instead of the CJS `require()` path: it fails
+  if a `.cjs`/`.d.cts` artifact or a `require` condition reappears in the tarball.
+
+### Added
+
+- `MIGRATION.md` — the in-app → package switch-over guide that `README.md` and `CHANGELOG.md`
+  already linked to, and that the published `files` list already advertised.
+
 ## [0.2.0] — 2026-09-10
 
 ### Added
