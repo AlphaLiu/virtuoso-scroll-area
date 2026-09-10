@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "verbatimModuleSyntax": true,
+    "types": ["vite/client"],
+    "paths": {
+      "virtuo-scroll-area": ["../../dist/index.d.ts"],
+      "virtuo-scroll-area/virtuoso": ["../../dist/virtuoso.d.ts"],
+      "virtuo-scroll-area/virtuoso-grid": ["../../dist/virtuoso-grid.d.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}

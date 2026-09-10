@@ -1,0 +1,21 @@
+# dependencies
+node_modules
+
+# build output
+dist
+coverage
+*.tsbuildinfo
+
+# npm pack output
+*.tgz
+
+# examples: generated, not sources
+examples/*/dist
+examples/*/node_modules
+examples/standalone
+
+# editor / OS noise
+.DS_Store
+*.log
+.idea
+.dsh-vision-router

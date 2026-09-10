@@ -1,0 +1,319 @@
+/* Demo styling. Deliberately plain CSS with no Tailwind, to prove the library needs no build
+ * integration: it renders correctly with nothing but this file. */
+
+:root {
+  color-scheme: dark;
+  --bg: #0a0c11;
+  --panel: #101319;
+  --panel-2: #151922;
+  --border: #232936;
+  --text: #e7ebf3;
+  --muted: #8b95a7;
+  --accent: #4f8cff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Helvetica Neue',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+code,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+}
+
+/* ---------------------------------------------------------------- hero */
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hero h1 {
+  margin: 0 0 12px;
+  font-size: 40px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  max-width: 62ch;
+  margin: 0 0 20px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.snippet {
+  display: inline-block;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  font-size: 13px;
+  color: #c9d4e6;
+}
+
+/* ------------------------------------------------------------- sections */
+
+.section {
+  margin-top: 56px;
+}
+
+.section-head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.step {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.section h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.section-head p {
+  margin: 0;
+  max-width: 72ch;
+  line-height: 1.55;
+}
+
+.label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------- containers */
+
+.panel {
+  height: 320px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.panel-sm {
+  height: 220px;
+}
+
+.relative {
+  position: relative;
+}
+
+.native-scroll {
+  overflow-y: auto;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.btn {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out;
+}
+
+.btn:hover {
+  background: #1c2230;
+  border-color: #313a4d;
+}
+
+/* --------------------------------------------------------------- rows */
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rows li {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.04);
+  font-size: 14px;
+  color: #cfd7e6;
+}
+
+.book-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.04);
+  font-size: 14px;
+}
+
+.book-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.badge {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------------- grid */
+
+/* Plain CSS overriding the library default (which lives in `@layer base`). In a Tailwind app
+ * this would just be `grid-cols-4`, which would win for the same reason. */
+.demo-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+
+.card {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+
+.card h3 {
+  margin: 10px 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card p {
+  margin: 0;
+}
+
+.cover {
+  display: grid;
+  place-items: center;
+  height: 84px;
+  border-radius: 8px;
+  font-size: 26px;
+  color: rgb(255 255 255 / 0.85);
+}
+
+/* ------------------------------------------------------- theming demos */
+
+.theme-thick {
+  --vsa-scrollbar-width: 14px;
+  --vsa-thumb-background: rgb(79 140 255 / 0.45);
+  --vsa-thumb-background-hover: rgb(79 140 255 / 0.8);
+}
+
+.theme-lime {
+  --vsa-thumb-background: rgb(163 230 53 / 0.5);
+  --vsa-thumb-background-hover: rgb(163 230 53 / 0.9);
+  --vsa-thumb-radius: 4px;
+}
+
+/* shadcn/ui users would map the tokens instead:
+ *   .vsa-scroll-area {
+ *     --vsa-thumb-background: color-mix(in oklab, var(--muted-foreground) 30%, transparent);
+ *     --vsa-scroll-to-top-background: var(--primary);
+ *     --vsa-scroll-to-top-foreground: var(--primary-foreground);
+ *   }
+ */
+
+/* --------------------------------------------------------------- footer */
+
+.footer {
+  margin-top: 64px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.footer p {
+  margin: 0 0 6px;
+}
+
+@media (max-width: 720px) {
+  .grid-2,
+  .demo-grid-4 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .hero h1 {
+    font-size: 30px;
+  }
+}
