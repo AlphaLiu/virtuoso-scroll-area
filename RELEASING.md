@@ -11,7 +11,7 @@ for human approval before it becomes installable. Apart from the very first vers
 | Event                                                 | What it means                                                                                                                        |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | **Run workflow** (Actions → Release → _Run workflow_) | The normal path: pick a bump, and the workflow commits it, tags it and stages it.                                                    |
-| **Push a `v*` tag**                                   | You cut the tag yourself (`git tag v0.3.0 && git push origin v0.3.0`) and the workflow stages it. The tag must match `package.json`. |
+| **Push a `v*` tag**                                   | You cut the tag yourself (`git tag v0.4.0 && git push origin v0.4.0`) and the workflow stages it. The tag must match `package.json`. |
 
 Jobs, in order:
 
