@@ -6,11 +6,12 @@ name: Release
 #   • workflow_dispatch  → bump package.json, commit, tag, push, then stage (the normal path)
 #
 # This workflow never publishes to the registry: it uploads the tarball to npm's stage queue,
-# where a maintainer must approve it with a 2FA challenge. The npm trusted publisher for this
-# package is deliberately scoped to `npm stage publish` only, so a direct `npm publish` from CI
-# is rejected — see RELEASING.md.
+# where a maintainer approves it with a 2FA challenge **on npmjs.com**. The npm trusted publisher
+# for this package is deliberately scoped to `npm stage publish` only, so a direct `npm publish`
+# from CI is rejected — see RELEASING.md.
 #
-# Approval + the GitHub Release live in `approve-release.yml`; nothing here touches the registry.
+# Nothing here touches the registry, and nothing here runs after staging: the GitHub Release is
+# created separately by `github-release.yml`, once the version really is live.
 on:
   push:
     tags: ['v*']
@@ -222,5 +223,6 @@ jobs:
             echo
             echo "- dist-tag: \`${DIST_TAG}\`"
             echo "- auth: \`${MODE}\`"
-            echo "- next: run the **Approve staged release** workflow"
+            echo "- next: approve it at https://www.npmjs.com/package/virtuo-scroll-area"
+            echo "- then: run the **GitHub Release** workflow with \`version: ${VERSION}\`"
           } >> "$GITHUB_STEP_SUMMARY"

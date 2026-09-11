@@ -19,9 +19,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `verify:pack` now asserts the ESM-only contract instead of the CJS `require()` path: it fails
   if a `.cjs`/`.d.cts` artifact or a `require` condition reappears in the tarball.
 - **Releases are staged on npm and need human approval.** `Release` now calls
-  `npm stage publish` instead of `npm publish`, and a new `Approve staged release` workflow
-  performs the 2FA approval and creates the GitHub Release afterwards. Nothing here needs to be
-  done by consumers — but it does mean a version is not installable the moment CI goes green.
+  `npm stage publish` instead of `npm publish`; a maintainer approves the staged version on
+  npmjs.com, and the **GitHub Release** workflow creates the Release once the version is live.
+  Nothing here needs to be done by consumers — but it does mean a version is not installable the
+  moment CI goes green.
 - The `prepublishOnly` hook was dropped: `npm stage publish` would trigger it on every staged
   upload, and CI already gates the release commit with the shared `verify` action before
   staging. Run `bun run verify` explicitly if you relied on it locally.
@@ -32,9 +33,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `MIGRATION.md` — the in-app → package switch-over guide that `README.md` and `CHANGELOG.md`
   already linked to, and that the published `files` list already advertised.
-- `.github/workflows/approve-release.yml` — approves a staged version with your 2FA password,
-  verifies it actually reached the registry (and carries a provenance attestation), and only
-  then creates the GitHub Release.
+- `.github/workflows/github-release.yml` — creates the GitHub Release for a version that is
+  already on npm, refusing to run while the version is still sitting in the stage queue.
 - `stage:list` and `stage:approve` package scripts, plus a `SOURCEMAP=1` build flag.
 
 ## [0.2.0] — 2026-09-10

@@ -2,8 +2,7 @@
 
 `virtuo-scroll-area` is released through GitHub Actions, and every version is **staged** on npm
 for human approval before it becomes installable. Apart from the very first version (see
-[First publish](#first-publish)), nothing is published from a developer machine — except the
-approval step, which you may run either in CI or locally (see [Approving](#approving)).
+[First publish](#first-publish)), nothing is published from a developer machine.
 
 ## The pipeline
 
@@ -26,46 +25,43 @@ Jobs, in order:
 3. **Stage on npm** — rebuilds `dist/`, asserts `package.json` matches the release version,
    derives the dist-tag, then runs `npm stage publish --access public --provenance
 --ignore-scripts`. This uploads the tarball to npm's stage queue; **the version is not
-   installable yet and `latest` does not move.**
-4. **Approve** (`.github/workflows/approve-release.yml`, separate run) — you supply a fresh 2FA
-   OTP, the workflow approves the stage entry with `npm stage approve`, verifies the version
-   actually landed on the registry and carries a provenance attestation, and only then creates
-   the GitHub Release from the matching `CHANGELOG.md` section (falling back to generated notes
-   with a warning). Prerelease versions are marked as such.
+   installable yet and `latest` does not move.** The workflow ends here.
+
+Approving the staged version and creating the GitHub Release are both deliberate human steps, in
+that order — see [Approving](#approving).
 
 The dist-tag is `latest` for `X.Y.Z` and the prerelease identifier for `X.Y.Z-<id>.N`
 (so `1.1.0-beta.1` is staged under `beta`, leaving `latest` alone).
 
 ## Approving
 
-A staged version sits in the queue until someone proves presence with a 2FA challenge. Two ways:
+A staged version sits in the queue until a maintainer approves it with a 2FA challenge. Do that
+**on npmjs.com**: open the package → **Staged versions** (or follow the link in the staging job
+summary) → **Approve**. npm asks for your 2FA code and publishes the version.
 
-**In CI (recommended).** Actions → **Approve staged release** → _Run workflow_:
-
-| Input     | Value                                                                         |
-| --------- | ----------------------------------------------------------------------------- |
-| `version` | the exact version to approve, e.g. `0.3.0` (empty = `package.json` on `main`) |
-| `otp`     | a fresh 6-digit code from your authenticator                                  |
-
-The OTP is short-lived, so generate it immediately before dispatching. Approval is not
-retry-safe with a stale code — the workflow prints the `stage-id` and the exact command to run
-locally if the password expires mid-run.
-
-**Locally.** Requires an authenticated npm CLI with 2FA:
+The CLI equivalent, if you prefer it, needs an authenticated npm CLI on an account with 2FA:
 
 ```bash
-bun run stage:list          # find the stage-id for the version you staged
-npm stage approve <stage-id>   # prompts for your OTP
+bun run stage:list             # what is queued, with each stage-id
+bun run stage:approve <stage-id>   # prompts for your 2FA code
 ```
-
-Then create the GitHub Release by running the CI route with `version` filled in — the approval
-step is skipped only if nothing is staged, so re-running it after a local approval still verifies
-the registry and creates the Release.
 
 `npm stage reject <stage-id>` discards a staged version without publishing it. The version number
 is **consumed either way**: npm refuses to stage a version that was already staged or published,
 so a rejected `0.3.0` means the next attempt is `0.3.1`, or you delete the tag and rewind
 `package.json` on `main`.
+
+### Then create the GitHub Release
+
+Because the approval happens outside GitHub, no workflow can observe it — so this step is manual
+too. Once the npm page shows the version as published, run Actions → **GitHub Release** →
+_Run workflow_ with `version` set to the version you just approved (e.g. `0.3.0`).
+
+It verifies the tag exists, refuses to run if the version is **not** on the registry yet (a
+Release pointing at an uninstallable version is worse than no Release), checks the published
+provenance attestation, and only then creates the Release from the matching `CHANGELOG.md`
+section — falling back to generated notes with a warning if the version has no section.
+Prerelease versions are marked as such.
 
 ## First publish
 
@@ -87,8 +83,8 @@ only — which is the case for this package.
 
 The staging job supports both npm auth methods and picks whichever is available — it uses the
 `NPM_TOKEN` repository secret when that secret is set, and falls back to OIDC trusted publishing
-when it is not. Note that the OTP input of the approval workflow is **not** an alternative to
-this: it is the 2FA proof of presence on top of whichever auth method applies.
+when it is not. Approving on npmjs.com is a separate thing entirely: it is your own 2FA proof of
+presence against your npm account, not a CI credential.
 
 ### Trusted publishing (recommended)
 
@@ -141,17 +137,17 @@ General → Workflow permissions** must allow _Read and write permissions_. Bran
    `major`, `dry_run` off → **Run workflow**.
 3. When that run is green the version is **staged, not published**: a `vX.Y.Z` tag exists, but
    `npm i virtuo-scroll-area@X.Y.Z` still fails and `latest` has not moved.
-4. Approve it — Actions → **Approve staged release** → _Run workflow_ with the version and a
-   fresh OTP (see [Approving](#approving)). That run publishes the version, then creates the
-   GitHub Release from the `CHANGELOG.md` section.
+4. Approve the staged version on npmjs.com (see [Approving](#approving)).
+5. Run Actions → **GitHub Release** → _Run workflow_ with the approved `version` to create the
+   Release from the `CHANGELOG.md` section.
 
 Re-run a failed staging with `bump: none` to stage the version already in `package.json` (its
 tag must exist on `origin`). If it fails because the version is _already staged_, do not bump —
 approve what is already in the queue (`bun run stage:list`).
 
 Use `dry_run: true` to exercise the pipeline without touching npm. It still bumps, commits and
-tags — only the staging and approval steps are skipped — so a dry run of `bump: minor` followed
-by a real `bump: none` is a complete rehearsal that publishes nothing until you approve.
+tags — only the staging step is skipped — so a dry run of `bump: minor` followed by a real
+`bump: none` is a complete rehearsal that publishes nothing until you approve.
 
 ### Versioning rules
 
@@ -171,16 +167,18 @@ bun run publish:dry   # pack + print what npm would receive
 bun run publish:npm   # real publish — rejected while the trusted publisher is stage-only
 ```
 
-The normal way to touch the registry from your machine is the approval step instead:
+The usual reason to touch npm from your machine is the approval step, if you would rather not do
+it in the web UI:
 
 ```bash
-bun run stage:list          # what is queued, with each stage-id
-bun run stage:approve <stage-id>   # publishes it after your OTP
+bun run stage:list                 # what is queued, with each stage-id
+bun run stage:approve <stage-id>   # publishes it after your 2FA code
 ```
 
 These pass `--registry=https://registry.npmjs.org/` where relevant because the default registry
-in a local `~/.npmrc` may be a read-only mirror. A local `npm publish` cannot attach a provenance
-attestation — only CI can, so prefer the approval workflow when provenance matters.
+in a local `~/.npmrc` may be a read-only mirror. Approving a CI-staged tarball keeps the
+provenance attestation CI created; a local `npm publish` cannot attach one at all, so prefer
+staging + approving over publishing by hand.
 
 ## Troubleshooting
 
@@ -191,9 +189,10 @@ attestation — only CI can, so prefer the approval workflow when provenance mat
 | `E403 ... OIDC permission denied for this action`                | Almost always a Permissions mismatch: the trusted publisher allows `npm publish` while the workflow calls `npm stage publish` (or the reverse). Check org, repo, workflow filename and Environment too. |
 | `E403 ... cannot publish over the previously published versions` | That version is already on npm — bump again; npm versions are immutable.                                                                                                                                |
 | Staging fails with "already staged"                              | A previous run staged this version. Approve or reject it (`bun run stage:list`) instead of re-staging.                                                                                                  |
-| Release workflow is green but the install still fails            | Working as intended: the version is staged and needs approval (see [Approving](#approving)).                                                                                                            |
-| Approval fails with an OTP error                                 | The 2FA password expired between generating it and running the job. Retry with a fresh code.                                                                                                            |
-| `npm stage` is not a command                                     | The npm CLI is older than 11.15.0. The workflows install `npm@^11.15.0` explicitly for this reason.                                                                                                     |
+| Release workflow is green but the install still fails            | Working as intended: the version is staged and needs approval on npmjs.com (see [Approving](#approving)).                                                                                               |
+| Approval on npmjs.com fails or the queue is empty                | You are looking at the wrong package, or not signed in as a maintainer. `bun run stage:list` shows what this account can actually see.                                                                  |
+| **GitHub Release** says the version is not on the registry       | You ran it before approving on npmjs.com. Approve first — this check exists so a Release never points at an uninstallable version.                                                                      |
+| `npm stage` is not a command                                     | The npm CLI is older than 11.15.0. `release.yml` installs `npm@^11.15.0` explicitly for this reason; do the same locally.                                                                               |
 | `provenance` errors                                              | The staging job must keep `id-token: write`, and `package.json` must keep the matching `repository` field.                                                                                              |
 | Verify job fails but the branch was green                        | The tag points at a commit that no longer matches the branch, or `bun.lock` drifted from `package.json`.                                                                                                |
 | `Can't find 'action.yml' ... .github/actions/verify`             | The tag predates the release automation. Both `.github/workflows/*` and `.github/actions/verify` must be present in the tagged commit.                                                                  |

@@ -67,7 +67,7 @@
     "verify:pack": "node scripts/verify-package.mjs",
     "changelog:section": "node scripts/changelog-section.mjs",
     "stage:list": "npm stage list virtuo-scroll-area --registry=https://registry.npmjs.org/",
-    "stage:approve": "npm stage approve",
+    "stage:approve": "npm stage approve --registry=https://registry.npmjs.org/",
     "publish:dry": "npm publish --dry-run --registry=https://registry.npmjs.org/",
     "publish:npm": "npm publish --registry=https://registry.npmjs.org/"
   },
