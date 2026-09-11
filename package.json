@@ -66,7 +66,8 @@
     "demo:standalone": "bun run build && cd examples/vite-demo && bun install && cd ../.. && node scripts/build-standalone-demo.mjs",
     "verify:pack": "node scripts/verify-package.mjs",
     "changelog:section": "node scripts/changelog-section.mjs",
-    "prepublishOnly": "bun run verify",
+    "stage:list": "npm stage list virtuo-scroll-area --registry=https://registry.npmjs.org/",
+    "stage:approve": "npm stage approve",
     "publish:dry": "npm publish --dry-run --registry=https://registry.npmjs.org/",
     "publish:npm": "npm publish --registry=https://registry.npmjs.org/"
   },

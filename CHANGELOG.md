@@ -4,7 +4,7 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] — 2026-09-11
 
 ### Changed
 
@@ -12,17 +12,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   dedicated CJS bundle — use `import`/`import()`, or a Node ≥ 20.19 / ≥ 22.12 where `require()`
   of ESM works through the interop path. The `require` condition was removed from `exports` for
   all three entry points, along with the `.cjs` and `.d.cts` output. This roughly halves the
-  package: the unpacked tarball drops from 27 files / 664 kB to 15 files / ~140 kB.
+  package: the unpacked tarball drops from 32 files / 655 kB to 17 files / 143 kB.
 - Sourcemaps are no longer published. Each `.map` embedded the full original source of its
   inputs, and together they accounted for ~55% of the tarball. Build them on demand with
   `SOURCEMAP=1 bun run build` when debugging a release.
 - `verify:pack` now asserts the ESM-only contract instead of the CJS `require()` path: it fails
   if a `.cjs`/`.d.cts` artifact or a `require` condition reappears in the tarball.
+- **Releases are staged on npm and need human approval.** `Release` now calls
+  `npm stage publish` instead of `npm publish`, and a new `Approve staged release` workflow
+  performs the 2FA approval and creates the GitHub Release afterwards. Nothing here needs to be
+  done by consumers — but it does mean a version is not installable the moment CI goes green.
+- The `prepublishOnly` hook was dropped: `npm stage publish` would trigger it on every staged
+  upload, and CI already gates the release commit with the shared `verify` action before
+  staging. Run `bun run verify` explicitly if you relied on it locally.
+- GitHub Actions were bumped to `actions/checkout@v5` and `actions/setup-node@v5`, which run on
+  Node 24 and clear the Node 20 deprecation notice.
 
 ### Added
 
 - `MIGRATION.md` — the in-app → package switch-over guide that `README.md` and `CHANGELOG.md`
   already linked to, and that the published `files` list already advertised.
+- `.github/workflows/approve-release.yml` — approves a staged version with your 2FA password,
+  verifies it actually reached the registry (and carries a provenance attestation), and only
+  then creates the GitHub Release.
+- `stage:list` and `stage:approve` package scripts, plus a `SOURCEMAP=1` build flag.
 
 ## [0.2.0] — 2026-09-10
 
